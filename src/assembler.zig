@@ -108,7 +108,7 @@ fn makeInstructionMap() !InstructionMap {
 }
 
 /// Creates an eBPF instruction from its components
-fn insn(opc: u8, dst: u8, src: u8, off: i16, imm: i32) ebpf.Instruction {
+fn ix(opc: u8, dst: u8, src: u8, off: i16, imm: i32) ebpf.Instruction {
     return ebpf.Instruction{
         .op = opc,
         .dst = dst,
@@ -128,10 +128,10 @@ fn encode(instType: InstructionType, opc: u8, instruction: Instruction) !ebpf.In
                 switch (operands[1]) {
                     .Register => |src_reg| {
                         if (src_reg > 10) return AssemblerError.InvalidRegister;
-                        return insn(opc | ebpf.BPF_X, reg, src_reg, 0, 0);
+                        return ix(opc | ebpf.BPF_X, reg, src_reg, 0, 0);
                     },
                     .Integer => |imm| {
-                        return insn(opc | ebpf.BPF_K, reg, 0, 0, @intCast(imm));
+                        return ix(opc | ebpf.BPF_K, reg, 0, 0, @intCast(imm));
                     },
                     else => return AssemblerError.InvalidOperands,
                 }
@@ -141,13 +141,13 @@ fn encode(instType: InstructionType, opc: u8, instruction: Instruction) !ebpf.In
         .AluUnary => switch (operands[0]) {
             .Register => |reg| {
                 if (reg > 10) return AssemblerError.InvalidRegister;
-                return insn(opc, reg, 0, 0, 0);
+                return ix(opc, reg, 0, 0, 0);
             },
             else => return AssemblerError.InvalidOperands,
         },
         .LoadAbs => switch (operands[0]) {
             .Integer => |imm| {
-                return insn(opc, 0, 0, 0, @intCast(imm));
+                return ix(opc, 0, 0, 0, @intCast(imm));
             },
             else => return AssemblerError.InvalidOperands,
         },
@@ -156,7 +156,7 @@ fn encode(instType: InstructionType, opc: u8, instruction: Instruction) !ebpf.In
                 if (reg > 10) return AssemblerError.InvalidRegister;
                 switch (operands[1]) {
                     .Integer => |off| {
-                        return insn(opc, 0, reg, 0, @intCast(off));
+                        return ix(opc, 0, reg, 0, @intCast(off));
                     },
                     else => return AssemblerError.InvalidOperands,
                 }
@@ -168,7 +168,7 @@ fn encode(instType: InstructionType, opc: u8, instruction: Instruction) !ebpf.In
                 if (reg > 10) return AssemblerError.InvalidRegister;
                 switch (operands[1]) {
                     .Integer => |imm| {
-                        return insn(opc, reg, 0, 0, @intCast(imm));
+                        return ix(opc, reg, 0, 0, @intCast(imm));
                     },
                     else => return AssemblerError.InvalidOperands,
                 }
@@ -181,7 +181,7 @@ fn encode(instType: InstructionType, opc: u8, instruction: Instruction) !ebpf.In
                 switch (operands[1]) {
                     .Memory => |mem| {
                         if (mem.base > 10) return AssemblerError.InvalidRegister;
-                        return insn(opc, dst, mem.base, @intCast(mem.offset), 0);
+                        return ix(opc, dst, mem.base, @intCast(mem.offset), 0);
                     },
                     else => return AssemblerError.InvalidOperands,
                 }
@@ -193,7 +193,7 @@ fn encode(instType: InstructionType, opc: u8, instruction: Instruction) !ebpf.In
                 if (mem.base > 10) return AssemblerError.InvalidRegister;
                 switch (operands[1]) {
                     .Integer => |imm| {
-                        return insn(opc, mem.base, 0, @intCast(mem.offset), @intCast(imm));
+                        return ix(opc, mem.base, 0, @intCast(mem.offset), @intCast(imm));
                     },
                     else => return AssemblerError.InvalidOperands,
                 }
@@ -206,7 +206,7 @@ fn encode(instType: InstructionType, opc: u8, instruction: Instruction) !ebpf.In
                 switch (operands[1]) {
                     .Register => |src| {
                         if (src > 10) return AssemblerError.InvalidRegister;
-                        return insn(opc, mem.base, src, @intCast(mem.offset), 0);
+                        return ix(opc, mem.base, src, @intCast(mem.offset), 0);
                     },
                     else => return AssemblerError.InvalidOperands,
                 }
@@ -215,7 +215,7 @@ fn encode(instType: InstructionType, opc: u8, instruction: Instruction) !ebpf.In
         },
         .JumpUnconditional => switch (operands[0]) {
             .Integer => |off| {
-                return insn(opc, 0, 0, @intCast(off), 0);
+                return ix(opc, 0, 0, @intCast(off), 0);
             },
             else => return AssemblerError.InvalidOperands,
         },
@@ -227,7 +227,7 @@ fn encode(instType: InstructionType, opc: u8, instruction: Instruction) !ebpf.In
                         if (src_reg > 10) return AssemblerError.InvalidRegister;
                         switch (operands[2]) {
                             .Integer => |off| {
-                                return insn(opc | ebpf.BPF_X, reg, src_reg, @intCast(off), 0);
+                                return ix(opc | ebpf.BPF_X, reg, src_reg, @intCast(off), 0);
                             },
                             else => return AssemblerError.InvalidOperands,
                         }
@@ -235,7 +235,7 @@ fn encode(instType: InstructionType, opc: u8, instruction: Instruction) !ebpf.In
                     .Integer => |imm| {
                         switch (operands[2]) {
                             .Integer => |off| {
-                                return insn(opc | ebpf.BPF_K, reg, 0, @intCast(off), @intCast(imm));
+                                return ix(opc | ebpf.BPF_K, reg, 0, @intCast(off), @intCast(imm));
                             },
                             else => return AssemblerError.InvalidOperands,
                         }
@@ -247,7 +247,7 @@ fn encode(instType: InstructionType, opc: u8, instruction: Instruction) !ebpf.In
         },
         .Call => switch (operands[0]) {
             .Integer => |imm| {
-                return insn(opc, 0, 0, 0, @intCast(imm));
+                return ix(opc, 0, 0, 0, @intCast(imm));
             },
             else => return AssemblerError.InvalidOperands,
         },
@@ -279,42 +279,42 @@ fn encode(instType: InstructionType, opc: u8, instruction: Instruction) !ebpf.In
                     },
                     else => return AssemblerError.InvalidOperands,
                 };
-                return insn(opc, reg, 0, 0, size);
+                return ix(opc, reg, 0, 0, size);
             },
             else => return AssemblerError.InvalidOperands,
         },
-        .NoOperand => return insn(opc, 0, 0, 0, 0),
+        .NoOperand => return ix(opc, 0, 0, 0, 0),
     }
 }
 
 /// Assembles a list of parsed instructions into eBPF bytecode
 fn assembleInternal(parsed: []Instruction) ![]ebpf.Instruction {
-    var insns = std.ArrayList(ebpf.Instruction).init(std.heap.page_allocator);
+    var ixs = std.ArrayList(ebpf.Instruction).init(std.heap.page_allocator);
     const instructionMap = try makeInstructionMap();
 
     for (parsed) |instruction| {
         const entry = instructionMap.get(instruction.name) orelse return AssemblerError.InvalidInstruction;
         const inst = try encode(entry.instType, entry.opcode, instruction);
-        try insns.append(inst);
+        try ixs.append(inst);
 
         // Special case for lddw
         if (entry.instType == .LoadImm and instruction.operands[1] != Operand.Nil) {
             if (instruction.operands[1] == Operand.Integer) {
-                try insns.append(insn(0, 0, 0, 0, @intCast(instruction.operands[1].Integer >> 32)));
+                try ixs.append(ix(0, 0, 0, 0, @intCast(instruction.operands[1].Integer >> 32)));
             }
         }
     }
 
-    return insns.toOwnedSlice();
+    return ixs.toOwnedSlice();
 }
 
 /// Assembles eBPF assembly source code into bytecode
 pub fn assemble(src: []const u8) ![]const u8 {
     const parsed = try parse(src);
-    const insns = try assembleInternal(parsed);
+    const ixs = try assembleInternal(parsed);
 
     var result = std.ArrayList(u8).init(std.heap.page_allocator);
-    for (insns) |instruction| {
+    for (ixs) |instruction| {
         const instr_array = instruction.to_array();
         try result.appendSlice(&instr_array);
     }
